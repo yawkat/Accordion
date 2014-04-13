@@ -1,0 +1,4 @@
+name: Accordion
+main: at.yawk.accordion.minecraft.example.AccordionBungee
+version: 1.0
+description: Accordion example plugin for bungee
