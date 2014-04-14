@@ -19,7 +19,7 @@ public class PacketType<PacketT extends Packet> implements Supplier<PacketT> {
     /**
      * The unique ID of this type.
      */
-    @Getter private final int id;
+    @Getter private final long id;
     /**
      * The class that each packet of this type extends.
      */

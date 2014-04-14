@@ -13,7 +13,7 @@ public interface ServerCategory extends RecipientRange {
     /**
      * Unique ID of this category used for serialization and deserialization.
      */
-    byte getId();
+    long getId();
 
     /**
      * Default categories that are probably sufficient for most networks.
@@ -41,7 +41,7 @@ public interface ServerCategory extends RecipientRange {
         private final byte id;
 
         @Override
-        public byte getId() {
+        public long getId() {
             return id;
         }
 

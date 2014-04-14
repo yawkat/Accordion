@@ -7,7 +7,9 @@ import java.util.Map;
 import javax.annotation.Nullable;
 import lombok.NonNull;
 import org.apache.mahout.math.map.AbstractIntObjectMap;
+import org.apache.mahout.math.map.AbstractLongObjectMap;
 import org.apache.mahout.math.map.OpenIntObjectHashMap;
+import org.apache.mahout.math.map.OpenLongObjectHashMap;
 
 /**
  * Packet registry used for identification of different types of packets.
@@ -18,7 +20,7 @@ public class PacketManager {
     /**
      * All packet types mapped to their unique ID.
      */
-    private final AbstractIntObjectMap<PacketType> packetTypesById = new OpenIntObjectHashMap<>();
+    private final AbstractLongObjectMap<PacketType> packetTypesById = new OpenLongObjectHashMap<>();
     /**
      * All packet types mapped to their Packet subclass.
      */
@@ -51,9 +53,9 @@ public class PacketManager {
      * Deserialize a packet written by #writePacket.
      */
     public Packet readPacket(ByteBuf input) {
-        int id = StreamUtil.readVarInt(input);
+        long id = StreamUtil.readVarIntLong(input);
         PacketType type = packetTypesById.get(id);
-        assert type != null : id;
+        assert type != null : id + " " + packetTypesById;
         Packet packet = type.get();
         packet.read(input);
         return packet;

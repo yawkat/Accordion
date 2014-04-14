@@ -2,6 +2,7 @@ package at.yawk.accordion.p2p;
 
 import at.yawk.accordion.packet.Packet;
 import at.yawk.accordion.packet.PacketManager;
+import at.yawk.accordion.packet.PacketType;
 import io.netty.buffer.ByteBuf;
 import java.util.Optional;
 import java.util.Random;
@@ -109,5 +110,12 @@ public class Envelope {
         ByteBuf payload = payloadCache.get().copy();
         payload.resetReaderIndex();
         return payload;
+    }
+
+    /**
+     * Returns the PacketType of the packet in this envelope.
+     */
+    public PacketType<?> getPacketType() {
+        return packetManager.findPacketType(getPacket());
     }
 }

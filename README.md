@@ -27,11 +27,13 @@ This module also contains the "backbone" system which allows for creation of an 
 
 This module does not depend on either BungeeCord or Bukkit.
 
+### minecraft-plugin
+
+Minecraft plugins for bukkit and bungee that provide an API to register packets and transmit them via the network.
+
 ### minecraft-example
 
 This module contains an example Bukkit plugin and an example BungeeCord plugin that together form a network with a basic packet exchange.
-
-**The plugins do not run out-of-the-box: See below for more details.**
 
 Building
 --------
@@ -41,13 +43,7 @@ All modules can be built by running `mvn clean package` in the main directory. T
 Example Setup
 -------------
 
-For a very basic setup you need one BungeeCord server and one CraftBukkit / Spigot server running on the same computer. Set up the bungee server so it is linked to the bukkit server properly. Now place the plugin jar in the plugins directory of both servers. Create a subdirectory in both folders called "Accordion". In there, create a config.yml file containing the following line:
-
-``` yaml
-id: 0
-```
-
-It is the same ID for both servers. 
+For a very basic setup you need one BungeeCord server and one CraftBukkit / Spigot server running on the same computer. Set up the bungee server so it is linked to the bukkit server properly. Now place the main accordion plugin jar and the example plugin jar in the plugins directory.
 
 This setup will allow both servers to "talk" to each other. Now start them and log in. When on the server, run the command `/ping 6`. When you check the logs, you will see a "Ping" output on the bungee server and a "Pong 6" output on the bukkit server. This is what happened:
 
@@ -57,12 +53,14 @@ This setup will allow both servers to "talk" to each other. Now start them and l
 	- It sends a "Pong reply" to the network with the same number as in the "Ping request".
 - The bukkit server receives this pong reply and prints out "Pong " and the number you entered.
 
-This setup works independently from logged in players.
+For initial discovery, a player must be logged in, but after that it works independent of connected players.
 
 To extend the example setup, you can create up to one more bungee and one more bukkit server. These should, instead of `id: 0`, use `id: 1` in their config files. If you now execute the `ping` command, a lot more happens:
 
 - You get the "Ping" output on all three servers you didn't run the command on
 - You get the "Pong" output three times on each server: One for each reply.
+
+Be aware that each server that should be connected to the network must have had a player join at least one. 
 
 Internals
 ---------

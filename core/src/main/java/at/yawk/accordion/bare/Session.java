@@ -48,7 +48,7 @@ public class Session {
      * Send a message to the other end.
      */
     public void transmit(ByteBuf message) {
-        channel.writeAndFlush(message);
+        channel.eventLoop().execute(() -> channel.writeAndFlush(message));
     }
 
     /**
@@ -92,8 +92,8 @@ public class Session {
     }
 
     /**
-     * Destroy this session. This usually removes the session from any place it might be registered at.
-     * Should only be called once. Does not disconnect the channel.
+     * Destroy this session. This usually removes the session from any place it might be registered at. Should only be
+     * called once. Does not disconnect the channel.
      */
     public void destroy() {
         destructionListener.run();

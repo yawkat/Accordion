@@ -1,0 +1,4 @@
+name: Accordion
+main: at.yawk.accordion.minecraft.AccordionBukkit
+version: 1.0
+description: Accordion plugin for Bukkit

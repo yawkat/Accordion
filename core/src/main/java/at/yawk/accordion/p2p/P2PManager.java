@@ -144,7 +144,7 @@ public class P2PManager {
         // Handshake
         log.debug("Welcoming remote...");
         ByteBuf hello = Unpooled.buffer();
-        recipientFactory.write(hello, getSelf());
+        recipientFactory.write(hello, getSelf(), false);
         session.transmit(hello);
 
         // register
@@ -205,7 +205,7 @@ public class P2PManager {
      */
     private void setupUnknownSession(Session session) {
         session.setMessageHandler(b -> {
-            Recipient remote = recipientFactory.read(b);
+            Recipient remote = recipientFactory.read(b, false);
             setupSession(remote, session);
         });
     }
@@ -213,7 +213,7 @@ public class P2PManager {
     /**
      * Set up and register a session of which we know the other end.
      */
-    private void setupSession(Recipient remote, Session session) {
+    private void setupSession(@NonNull Recipient remote, @NonNull Session session) {
         session.setDestructionListener(() -> {
             // if this session is still modern, remove it (replace with empty optional)
             sessions.compute(remote, (k, v) -> {
@@ -265,7 +265,7 @@ public class P2PManager {
         try {
             // handle
             messageHandler.accept(envelope);
-        } catch (Throwable t) { log.error(t); }
+        } catch (Throwable t) { log.error("Failed to handle packet", t); }
     }
 
     /**

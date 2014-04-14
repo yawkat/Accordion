@@ -13,16 +13,14 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-import lombok.AccessLevel;
-import lombok.Getter;
+import javax.annotation.Nullable;
+import lombok.NonNull;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.SimpleLayout;
-import org.apache.mahout.math.map.AbstractByteObjectMap;
-import org.apache.mahout.math.map.AbstractShortObjectMap;
-import org.apache.mahout.math.map.OpenByteObjectHashMap;
-import org.apache.mahout.math.map.OpenShortObjectHashMap;
+import org.apache.mahout.math.map.AbstractLongObjectMap;
+import org.apache.mahout.math.map.OpenLongObjectHashMap;
 
 /**
  * Main network manager for a minecraft server network.
@@ -38,13 +36,11 @@ public class MinecraftNetManager {
     /**
      * All categories of servers (used for deserialization).
      */
-    @Getter(AccessLevel.PACKAGE)
-    private final AbstractByteObjectMap<ServerCategory> categories = new OpenByteObjectHashMap<>();
+    private final AbstractLongObjectMap<ServerCategory> categories = new OpenLongObjectHashMap<>();
     /**
      * All servers by main category and ID.
      */
-    @Getter(AccessLevel.PACKAGE)
-    private final Map<ServerCategory, AbstractShortObjectMap<Server>> servers = Maps.newHashMap();
+    private final Map<ServerCategory, AbstractLongObjectMap<Server>> servers = Maps.newHashMap();
 
     static {
         // prepare logging
@@ -57,6 +53,8 @@ public class MinecraftNetManager {
         p2pManager.setMessageHandler(packetHandler);
 
         addCategory(ServerCategory.Default.ALL);
+        addCategory(ServerCategory.Default.BUKKIT);
+        addCategory(ServerCategory.Default.BUNGEE);
     }
 
     /**
@@ -72,17 +70,17 @@ public class MinecraftNetManager {
     /**
      * Register a category so it can be deserialized. Missing categories will cause errors.
      */
-    public synchronized void addCategory(ServerCategory category) {
+    public synchronized void addCategory(@NonNull ServerCategory category) {
         categories.put(category.getId(), category);
     }
 
     /**
      * Register a server so we can connect the network to it. Also registers its main category, if necessary.
      */
-    public synchronized void addPeer(Server server) {
+    public synchronized void addPeer(@NonNull Server server) {
         addCategory(server.getCategory());
         if (!servers.containsKey(server.getCategory())) {
-            servers.put(server.getCategory(), new OpenShortObjectHashMap<>());
+            servers.put(server.getCategory(), new OpenLongObjectHashMap<>());
         }
         servers.get(server.getCategory()).put(server.getId(), server);
         p2pManager.registerPeer(server);
@@ -112,14 +110,16 @@ public class MinecraftNetManager {
     /**
      * Register a new packet type.
      */
-    public <P extends Packet> void registerPacket(int id, Supplier<P> creator, Class<P> type) {
-        p2pManager.getPacketManager().registerPacketType(PacketType.create(id, type, creator));
+    public <P extends Packet> PacketType registerPacket(long id, Supplier<P> creator, Class<P> type) {
+        PacketType ptype = PacketType.create(id, type, creator);
+        p2pManager.getPacketManager().registerPacketType(ptype);
+        return ptype;
     }
 
     /**
      * Register a new packet type. The given type must have an empty constructor.
      */
-    public <P extends Packet> void registerPacket(int id, Class<P> type) {
+    public <P extends Packet> void registerPacket(long id, Class<P> type) {
         try {
             Constructor<P> constructor = type.getConstructor();
             registerPacket(id, () -> {
@@ -160,5 +160,47 @@ public class MinecraftNetManager {
      */
     public void start() {
         p2pManager.start();
+    }
+
+    /**
+     * Return a stream of all known categories.
+     */
+    public Stream<ServerCategory> listCategories() {
+        return categories.values().stream();
+    }
+
+    /**
+     * Find the category with the given ID.
+     *
+     * @return the category or null if it is not known.
+     */
+    @Nullable
+    public ServerCategory getCategory(long id) {
+        return categories.get(id);
+    }
+
+    /**
+     * Find the server with the given primary category and ID.
+     *
+     * @return The server or null if it is unknown.
+     */
+    @Nullable
+    public Server getServer(ServerCategory category, long id) {
+        AbstractLongObjectMap<Server> inCat = servers.get(category);
+        return inCat == null ? null : inCat.get(id);
+    }
+
+    /**
+     * This server.
+     */
+    public Server getSelf() {
+        return (Server) p2pManager.getSelf();
+    }
+
+    /**
+     * Returns a stream of all known servers.
+     */
+    public Stream<Server> getServers() {
+        return servers.values().stream().map(AbstractLongObjectMap::values).flatMap(l -> l.stream());
     }
 }

@@ -3,28 +3,18 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>at.yawk.accordion</groupId>
         <artifactId>accordion</artifactId>
+        <groupId>at.yawk.accordion</groupId>
         <version>1.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>accordion-minecraft-example</artifactId>
+    <artifactId>accordion-simulation</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot</artifactId>
-            <version>1.7.8-R0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>net.md-5</groupId>
-            <artifactId>bungeecord-api</artifactId>
-            <version>1.7-SNAPSHOT</version>
-        </dependency>
-        <dependency>
             <groupId>at.yawk.accordion</groupId>
-            <artifactId>accordion-minecraft-plugin</artifactId>
+            <artifactId>accordion-minecraft</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
     </dependencies>

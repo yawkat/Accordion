@@ -1,7 +1,8 @@
-name: Accordion
-main: at.yawk.accordion.minecraft.example.AccordionBukkit
+name: AccordionExample
+main: at.yawk.accordion.minecraft.example.AccordionBukkitExample
 version: 1.0
 description: Accordion example plugin for bukkit
+depends: [Accordion]
 commands:
    ping:
       description: Broadcast a ping packet (results can be seen in the log)

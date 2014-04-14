@@ -15,8 +15,11 @@ public interface RecipientFactory {
 
     /**
      * Deserialize a Recipient.
+     *
+     * @param useCache If set to true, this method should use a global cache to minimize bandwidth usage, at risk of
+     *                 returning null.
      */
-    Recipient read(ByteBuf source);
+    Recipient read(ByteBuf source, boolean useCache);
 
     /**
      * Serialize a RecipientRange. Can be assumed to be the same type as returned by #readRange.
@@ -25,6 +28,8 @@ public interface RecipientFactory {
 
     /**
      * Serialize a Recipient. Can be assumed to be the same type as returned by #read.
+     *
+     * @param useCache If set to true, this method should use a global cache to minimize bandwidth usage.
      */
-    void write(ByteBuf target, Recipient recipient);
+    void write(ByteBuf target, Recipient recipient, boolean useCache);
 }
