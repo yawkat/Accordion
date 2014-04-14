@@ -26,7 +26,7 @@ public class AccordionBukkit extends JavaPlugin implements ApiProvider, Listener
         // load bridge
         try {
             bridge = new PluginBridge(new Config(new File(getDataFolder(), "config.properties"),
-                                                 ServerCategory.Default.BUNGEE,
+                                                 ServerCategory.Default.BUKKIT,
                                                  Bukkit.getPort()));
         } catch (IOException e) {
             throw new IOError(e);
