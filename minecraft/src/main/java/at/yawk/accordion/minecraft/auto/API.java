@@ -1,5 +1,6 @@
 package at.yawk.accordion.minecraft.auto;
 
+import at.yawk.accordion.minecraft.Server;
 import at.yawk.accordion.minecraft.ServerCategory;
 import at.yawk.accordion.p2p.RecipientRange;
 import at.yawk.accordion.packet.Packet;
@@ -79,4 +80,10 @@ public interface API {
     default void broadcast(Packet packet) {
         transmit(packet, ServerCategory.Default.ALL);
     }
+
+    /**
+     * Adds the given server to the peer list. This can be used to directly connect to a server without a plugin
+     * channel.
+     */
+    default void addPeer(Server server) {}
 }

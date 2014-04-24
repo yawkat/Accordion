@@ -12,6 +12,7 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import lombok.NonNull;
 
 /**
  * Implementation of the API.
@@ -105,5 +106,10 @@ public class PluginBridge implements API {
      */
     public Consumer<byte[]> getPluginMessageHandler() {
         return apiHelper.getPluginChannelHandler();
+    }
+
+    @Override
+    public void addPeer(@NonNull Server server) {
+        apiHelper.getNetManager().addPeer(server);
     }
 }
