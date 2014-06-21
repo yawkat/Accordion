@@ -3,6 +3,8 @@ Accordion
 
 Peer-to-peer network API to connect multiple Minecraft servers together.
 
+Presents a publish-subscribe-based system for easy packet exchange.
+
 Download
 --------
 
@@ -21,15 +23,7 @@ The core module contains netty-based network code that is not specifically linke
 
 ### minecraft
 
-The minecraft module contains a minecraft-specific network setup such as different server types. It extends the core module. 
-
-This module also contains the "backbone" system which allows for creation of an efficient peer-to-peer network setup. It is only slightly minecraft-dependend and can be used outside of it as well.
-
-This module does not depend on either BungeeCord or Bukkit.
-
-### minecraft-plugin
-
-Minecraft plugins for bukkit and bungee that provide an API to register packets and transmit them via the network.
+The minecraft module contains a minecraft-specific network setup and easy access to them from bukkit and bungee plugins.
 
 ### minecraft-example
 
@@ -77,7 +71,7 @@ In live tests, the network was easily able to handle 200 packets per second with
 Uses
 ----
 
-This project is based on the MCStrike internal network which operates in the same fashion, though it uses custom data management and packet registration. This project has been rewritten from scratch for open-source usage.
+This project is used in the MCStrike internal network.
 
 License
 -------
@@ -88,9 +82,8 @@ Libraries
 ---------
 
 - *Lombok* is used for convenience.
-- *Apache Mahout* is used for fast implementations of primitive collections.
-- *FindBugs* is used for `@Nullable` annotations not provided by lombok.
-- *Log4J* is used for logging. See the `MinecraftNetManager` static constructor on how to disable it.
+- *Trove4j* is used for fast implementations of primitive collections.
+- *Slf4j* is used for logging.
 - *Spigot* is used for the bukkit example plugin.
 - *BungeeCord* is used for the bungee example plugin.
 

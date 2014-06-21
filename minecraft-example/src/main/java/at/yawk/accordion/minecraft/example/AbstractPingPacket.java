@@ -1,6 +1,6 @@
 package at.yawk.accordion.minecraft.example;
 
-import at.yawk.accordion.packet.Packet;
+import at.yawk.accordion.codec.packet.Packet;
 import io.netty.buffer.ByteBuf;
 
 /**
