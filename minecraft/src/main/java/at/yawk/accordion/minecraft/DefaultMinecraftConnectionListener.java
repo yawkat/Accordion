@@ -9,6 +9,9 @@ import gnu.trove.map.hash.TObjectLongHashMap;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 /**
@@ -23,6 +26,8 @@ public class DefaultMinecraftConnectionListener implements ConnectionListener {
      */
     private static final int DISCONNECT_AVOID_INTERVAL = 10000;
 
+    private final ScheduledExecutorService scheduler;
+
     private final LocalNode localNode;
 
     private final TObjectLongMap<Node> nodeFailTimes = new TObjectLongHashMap<>();
@@ -32,9 +37,17 @@ public class DefaultMinecraftConnectionListener implements ConnectionListener {
     protected DefaultMinecraftConnectionListener(LocalNode localNode) {
         this.localNode = localNode;
 
+        scheduler = new ScheduledThreadPoolExecutor(1, task -> new Thread(() -> {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                localNode.getLogger().error("Failed to execute connection listener task", e);
+            }
+        }));
+
         nodeSorter = Comparator.
                 // avoid nodes we polled unsuccessfully in the last 10 seconds
-                        <Node, Boolean>comparing(node -> System.currentTimeMillis() - nodeFailTimes.get(node) >
+                        <Node, Boolean>comparing(node -> System.currentTimeMillis() - nodeFailTimes.get(node) <
                                                          DISCONNECT_AVOID_INTERVAL)
                         // prefer nodes that are closer to our address
                 .thenComparing(Comparator.comparing(node -> node.getAddress().getAddress(),
@@ -63,24 +76,24 @@ public class DefaultMinecraftConnectionListener implements ConnectionListener {
 
     @Override
     public void nodesRegistered(Set<Node> newNodes, boolean fromSynchronization) {
-        update();
+        scheduler.execute(this::update);
     }
 
     @Override
-    public void connectionAttemptFailed(Node other) {
+    public synchronized void connectionAttemptFailed(Node other) {
         // connection failed, wait a bit until retry
         nodeFailTimes.put(other, System.currentTimeMillis());
-        update();
+        scheduler.schedule(this::update, 1, TimeUnit.SECONDS);
     }
 
     @Override
     public void connected(Node other, boolean thisIsServer) {
-        update();
+        scheduler.execute(this::update);
     }
 
     @Override
     public void disconnected(Node other) {
-        update();
+        scheduler.execute(this::update);
     }
 
     /**
