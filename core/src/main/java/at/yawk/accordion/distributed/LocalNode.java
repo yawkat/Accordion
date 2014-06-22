@@ -74,7 +74,7 @@ public class LocalNode {
         this.listenerAddress = listenerAddress;
         this.connectionListener = connectionListenerFactory.createConnectionListener(this);
 
-        remoteNodes = new CollectionSynchronizer<Node>(this.connectionManager,
+        remoteNodes = new BasicCollectionSynchronizer<Node>(this.connectionManager,
                                                        InternalProtocol.SYNC_NODES,
                                                        Node.getCodec()) {
             @Override

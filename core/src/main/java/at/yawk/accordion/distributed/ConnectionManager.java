@@ -30,10 +30,6 @@ public class ConnectionManager implements Messenger<ByteBuf> {
      */
     private static final int MAX_CHANNEL_NAME_LENGTH = 0xFF;
     /**
-     * Property used in Connection#properties for channels that connection has subscribed to.
-     */
-    private static final String PROPERTY_SUBSCRIBED = "subscribedChannels";
-    /**
      * RNG for generating random packet IDs.
      */
     private static final Random PACKET_ID_GENERATOR = new Random();
@@ -64,8 +60,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
     /**
      * All channels in the network. Also the channels we need to receive to forward them to other nodes.
      */
-    // TODO clean this collection up somehow so we don't receive all channels if we disconnect-reconnect
-    private final CollectionSynchronizer<String> subscribedChannels;
+    private final GraphCollectionSynchronizer<String> subscribedChannels;
 
     /**
      * Internal handlers for specific channels. If an internal handler for a channel is defined, it cannot be used for
@@ -79,30 +74,24 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         // remove on disconnect.
         this.disconnectListener = connections::remove;
 
-        subscribedChannels = new CollectionSynchronizer<String>(this, InternalProtocol.SUBSCRIBE,
-                                                                new ByteCodec<String>() {
-                                                                    // normal string encode / decode
-                                                                    @Override
-                                                                    public String decode(ByteBuf encoded) {
-                                                                        return InternalProtocol.readByteString(encoded);
-                                                                    }
+        subscribedChannels = new GraphCollectionSynchronizer<String>(this, InternalProtocol.SUBSCRIBE,
+                                                                     new ByteCodec<String>() {
+                                                                         // normal string encode / decode
+                                                                         @Override
+                                                                         public String decode(ByteBuf encoded) {
+                                                                             return InternalProtocol.readByteString(
+                                                                                     encoded);
+                                                                         }
 
-                                                                    @Override
-                                                                    public void encode(ByteBuf target, String message) {
-                                                                        InternalProtocol.writeByteString(target,
-                                                                                                         message);
-                                                                    }
-                                                                }) {
+                                                                         @Override
+                                                                         public void encode(ByteBuf target,
+                                                                                            String message) {
+                                                                             InternalProtocol.writeByteString(target,
+                                                                                                              message);
+                                                                         }
+                                                                     }) {
             @Override
             protected Set<String> handleUpdate(Set<String> newEntries, Connection origin) {
-                /*
-                 * Hack to register channels that remote nodes listen to. If we receive new entries from a
-                 * connection, we can be sure that either they or a node behind them listens to those channels: they
-                 * would not send the newly subscribed channels back to us if we sent them to them. Because of this
-                 * we can be certain that they actually want to listen to that channel (or a node behind them does in
-                 * which case they need to forward it anyway).
-                 */
-                getSubscribedChannels(origin).addAll(newEntries);
                 Log.debug(getLogger(), () -> origin + " now subscribed to " + newEntries);
                 return super.handleUpdate(newEntries, origin);
             }
@@ -213,12 +202,10 @@ public class ConnectionManager implements Messenger<ByteBuf> {
     }
 
     /**
-     * Get a mutable Set of all channels that connection is subscribed to.
+     * Get a Set of all channels that connection is subscribed to.
      */
-    @SuppressWarnings("unchecked")
     private Set<String> getSubscribedChannels(Connection connection) {
-        return (Set<String>) connection.properties().computeIfAbsent(PROPERTY_SUBSCRIBED,
-                                                                     k -> Collections.synchronizedSet(new HashSet<>()));
+        return subscribedChannels.getTheirEntries(connection);
     }
 
     /**
