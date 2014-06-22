@@ -155,6 +155,7 @@ class GraphCollectionSynchronizer<T> extends AbstractCollectionSynchronizer<T> {
                     .filter(entry -> !has.contains(entry)).collect(Collectors.toSet());
             // transmit
             sendAdded(Stream.of(connection), sending);
+            getTransmittedEntries(connection).addAll(sending);
         });
     }
 }
