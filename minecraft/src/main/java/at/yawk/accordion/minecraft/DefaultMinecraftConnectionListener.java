@@ -8,6 +8,7 @@ import gnu.trove.map.TObjectLongMap;
 import gnu.trove.map.hash.TObjectLongHashMap;
 import java.util.Comparator;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -25,6 +26,7 @@ public class DefaultMinecraftConnectionListener implements ConnectionListener {
      * Time in milliseconds after an unsuccesful connection attempt that we should avoid using a node to connect to.
      */
     private static final int DISCONNECT_AVOID_INTERVAL = 10000;
+    private static final Random RNG = new Random();
 
     private final ScheduledExecutorService scheduler;
 
@@ -45,15 +47,16 @@ public class DefaultMinecraftConnectionListener implements ConnectionListener {
             }
         }));
 
-        nodeSorter = Comparator.
+        nodeSorter = Comparator
                 // avoid nodes we polled unsuccessfully in the last 10 seconds
-                        <Node, Boolean>comparing(node -> System.currentTimeMillis() - nodeFailTimes.get(node) <
-                                                         DISCONNECT_AVOID_INTERVAL)
+                .<Node, Boolean>comparing(node -> System.currentTimeMillis() - nodeFailTimes.get(node) <
+                                                  DISCONNECT_AVOID_INTERVAL)
                         // prefer nodes that are closer to our address
                 .thenComparing(Comparator.comparing(node -> node.getAddress().getAddress(),
                                                     new LocalAddressSorter(localNode.getSelf()
                                                                                    .getAddress()
-                                                                                   .getAddress())));
+                                                                                   .getAddress())))
+                .thenComparingInt(e -> RNG.nextInt());
     }
 
     public static ConnectionListener create(LocalNode localNode) {
