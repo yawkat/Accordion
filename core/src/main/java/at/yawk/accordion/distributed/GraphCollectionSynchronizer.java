@@ -23,7 +23,7 @@ import java.util.stream.Stream;
  * <code>{2, 3}</code></li> <li>Let <code>C</code> have the entries <code>{3, 4}</code></li> <li>Let <code>D</code> have
  * the entries <code>{4, 5}</code></li> </ul>
  * <p/>
- * Node <code>C</code> has two connections (to <code>A</code> and to <code>B</code>) and can get the entries behind
+ * Node <code>C</code> has two connections (to <code>B</code> and to <code>C</code>) and can get the entries behind
  * either: The entries behind <code>B</code> are <code>{1, 2, 3}</code> (because this includes <code>A</code> <i>and</i>
  * <code>B</code>), the entries in direction <code>D</code> are <code>{4, 5}</code>.
  * <p/>
