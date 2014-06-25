@@ -11,6 +11,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -67,6 +68,15 @@ public class ConnectionManager implements Messenger<ByteBuf> {
      * normal communication. Packets in that channel will also not be forwarded to other servers.
      */
     private final Map<String, BiConsumer<ByteBuf, Connection>> internalHandlers = new HashMap<>();
+
+    /**
+     * Counter that gets incremented each time a new unique packet is received.
+     */
+    private final AtomicLong receivedPacketCount = new AtomicLong();
+    /**
+     * Counter that gets incremented each time a packet is received, including duplicate packets.
+     */
+    private final AtomicLong receivedPacketCountIncludingDuplicates = new AtomicLong();
 
     private ConnectionManager(Logger logger) {
         this.logger = logger;
@@ -127,6 +137,8 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         });
         // on receive
         connection.setMessageHandler(message -> {
+            receivedPacketCountIncludingDuplicates.incrementAndGet();
+
             // read packet ID
             long packetId = message.readLong();
             if (!packetDistinctionHandler.register(packetId)) {
@@ -134,6 +146,8 @@ public class ConnectionManager implements Messenger<ByteBuf> {
                 Log.debug(logger, () -> "Duplicate packet " + packetId);
                 return;
             }
+
+            receivedPacketCount.incrementAndGet();
 
             // read channel name
             String channelName = InternalProtocol.readByteString(message);
@@ -261,5 +275,19 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         } while (!packetDistinctionHandler.register(packetId));
 
         return packetId;
+    }
+
+    /**
+     * @see #receivedPacketCount
+     */
+    public long getReceivedPacketCount() {
+        return receivedPacketCount.get();
+    }
+
+    /**
+     * @see #receivedPacketCountIncludingDuplicates
+     */
+    public long getReceivedPacketCountIncludingDuplicates() {
+        return receivedPacketCountIncludingDuplicates.get();
     }
 }
