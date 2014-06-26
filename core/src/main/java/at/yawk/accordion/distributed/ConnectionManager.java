@@ -8,9 +8,7 @@ import at.yawk.accordion.netty.Connection;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -78,6 +76,11 @@ public class ConnectionManager implements Messenger<ByteBuf> {
      */
     private final AtomicLong receivedPacketCountIncludingDuplicates = new AtomicLong();
 
+    /**
+     * Executor used for asynchronous connection writing.
+     */
+    private final Executor executor = Executors.newCachedThreadPool();
+
     private ConnectionManager(Logger logger) {
         this.logger = logger;
 
@@ -128,6 +131,11 @@ public class ConnectionManager implements Messenger<ByteBuf> {
      * another ConnectionManager.
      */
     public void addConnection(Connection connection) {
+        // wrap in async connection to avoid long blocking
+        doAddConnection(new AsynchronousConnection(connection, executor));
+    }
+
+    private void doAddConnection(Connection connection) {
         connections.add(connection);
 
         connection.setDisconnectHandler(() -> disconnectListener.accept(connection));
