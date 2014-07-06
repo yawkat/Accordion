@@ -6,6 +6,10 @@ import at.yawk.accordion.Messenger;
 import at.yawk.accordion.codec.ByteCodec;
 import at.yawk.accordion.netty.Connection;
 import io.netty.buffer.ByteBuf;
+import lombok.AccessLevel;
+import lombok.Getter;
+import org.slf4j.Logger;
+
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
@@ -14,9 +18,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.AccessLevel;
-import lombok.Getter;
-import org.slf4j.Logger;
 
 /**
  * Class for managing connections with other nodes, packet distribution and packet reading.
@@ -36,7 +37,8 @@ public class ConnectionManager implements Messenger<ByteBuf> {
     /**
      * Our logger.
      */
-    @Getter private final Logger logger;
+    @Getter
+    private final Logger logger;
 
     @Getter(AccessLevel.PACKAGE)
     private final Collection<Connection> connections = new CopyOnWriteArraySet<>();
@@ -60,6 +62,10 @@ public class ConnectionManager implements Messenger<ByteBuf> {
      * All channels in the network. Also the channels we need to receive to forward them to other nodes.
      */
     private final GraphCollectionSynchronizer<String> subscribedChannels;
+    /**
+     * Manages heartbeats and disconnects on timeout.
+     */
+    private final HeartbeatManager heartbeatManager;
 
     /**
      * Internal handlers for specific channels. If an internal handler for a channel is defined, it cannot be used for
@@ -88,27 +94,30 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         this.disconnectListener = connections::remove;
 
         subscribedChannels = new GraphCollectionSynchronizer<String>(this, InternalProtocol.SUBSCRIBE,
-                                                                     new ByteCodec<String>() {
-                                                                         // normal string encode / decode
-                                                                         @Override
-                                                                         public String decode(ByteBuf encoded) {
-                                                                             return InternalProtocol.readByteString(
-                                                                                     encoded);
-                                                                         }
+                new ByteCodec<String>() {
+                    // normal string encode / decode
+                    @Override
+                    public String decode(ByteBuf encoded) {
+                        return InternalProtocol.readByteString(
+                                encoded);
+                    }
 
-                                                                         @Override
-                                                                         public void encode(ByteBuf target,
-                                                                                            String message) {
-                                                                             InternalProtocol.writeByteString(target,
-                                                                                                              message);
-                                                                         }
-                                                                     }) {
+                    @Override
+                    public void encode(ByteBuf target,
+                                       String message) {
+                        InternalProtocol.writeByteString(target,
+                                message);
+                    }
+                }) {
             @Override
             protected Set<String> handleUpdate(Set<String> newEntries, Connection origin) {
                 Log.debug(getLogger(), () -> origin + " now subscribed to " + newEntries);
                 return super.handleUpdate(newEntries, origin);
             }
         };
+
+        heartbeatManager = new HeartbeatManager(this);
+        heartbeatManager.start();
     }
 
     /**
@@ -161,7 +170,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
             String channelName = InternalProtocol.readByteString(message);
 
             Log.debug(logger,
-                      () -> "Received packet " + Long.toHexString(packetId) + " in channel '" + channelName + "' (" +
+                    () -> "Received packet " + Long.toHexString(packetId) + " in channel '" + channelName + "' (" +
                             message.readableBytes() + " bytes)");
 
             // handle internally
@@ -187,6 +196,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
                     .forEach(other -> copyAndSend(other, message));
         });
         subscribedChannels.onConnected(connection);
+        heartbeatManager.onConnected(connection);
     }
 
     /**
@@ -202,7 +212,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         if (Log.isDebug(logger)) {
             List<Connection> connectionList = receivers.collect(Collectors.toList());
             logger.debug("Transmitting packet " + Long.toHexString(packetId) + " in channel '" + new String(channel) +
-                         "' (" + payload.readableBytes() + " bytes) to " + connectionList);
+                    "' (" + payload.readableBytes() + " bytes) to " + connectionList);
             receivers = connectionList.stream();
         }
         // encode

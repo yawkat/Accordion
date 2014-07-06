@@ -68,6 +68,7 @@ class NettyConnection implements Connection {
     @Override
     public void disconnect() {
         channel.disconnect();
+        disconnectHandler.run();
     }
 
     @Override

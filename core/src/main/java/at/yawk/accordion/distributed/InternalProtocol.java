@@ -26,6 +26,14 @@ class InternalProtocol {
      * Encoded #WELCOME.
      */
     static final byte[] WELCOME_BYTES = WELCOME.getBytes(StandardCharsets.UTF_8);
+    /**
+     * Channel used for heartbeat handler.
+     */
+    static final String HEARTBEAT = "acc.bea";
+    /**
+     * Encoded #HEARTBEAT.
+     */
+    static final byte[] HEARTBEAT_BYTES = HEARTBEAT.getBytes(StandardCharsets.UTF_8);
 
     /**
      * Read a string written with #writeByteString.
