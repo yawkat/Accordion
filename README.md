@@ -10,7 +10,7 @@ Download
 
 You can download builds on my jenkins: [![Build Status](http://ci.yawk.at/job/Accordion/badge/icon)](http://ci.yawk.at/job/Accordion/)
 
-The maven repository can be found [here](http://ci.yawk.at/plugin/repository/everything/).
+The maven repository can be found [here](http://mvn.yawk.at/).
 
 Modules
 -------
