@@ -22,6 +22,22 @@ public class AccordionBungee {
                 .logger(plugin.getLogger())
                 .listen(true)
                 .tier(AccordionApi.DEFAULT_TIER_BUNGEE);
+
+        // hack to get bungee thread group
+        Object lock = new Object();
+        plugin.getProxy().getScheduler().runAsync(plugin, () -> {
+            api.threadGroup(Thread.currentThread().getThreadGroup());
+            synchronized (lock) {
+                lock.notifyAll();
+            }
+        });
+        //noinspection SynchronizationOnLocalVariableOrMethodParameter
+        synchronized (lock) {
+            try {
+                lock.wait();
+            } catch (InterruptedException ignored) {}
+        }
+
         // TODO reliable autostart
         plugin.getProxy().getScheduler().schedule(plugin, api::tryAutoStart, 3, TimeUnit.SECONDS);
 

@@ -3,9 +3,9 @@ package at.yawk.accordion.distributed;
 import at.yawk.accordion.Log;
 import at.yawk.accordion.netty.Connection;
 import io.netty.buffer.Unpooled;
-
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -33,7 +33,7 @@ class HeartbeatManager {
      */
     private final ConnectionManager connectionManager;
 
-    private final Timer heartbeat;
+    private final ScheduledExecutorService heartbeat;
 
     /**
      * Flag whether #start has been called.
@@ -43,7 +43,10 @@ class HeartbeatManager {
     public HeartbeatManager(ConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
 
-        heartbeat = new Timer("Accordion Heartbeat Thread #" + threadId.incrementAndGet(), true);
+        heartbeat = Executors
+                .newSingleThreadScheduledExecutor(r -> new Thread(connectionManager.getThreadGroup(),
+                                                                  r,
+                                                                  "Heartbeat thread #" + threadId.incrementAndGet()));
 
         connectionManager.setInternalHandler(InternalProtocol.HEARTBEAT, (msg, con) -> markAlive(con));
     }
@@ -57,12 +60,7 @@ class HeartbeatManager {
         }
         scheduled = true;
 
-        heartbeat.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                beat();
-            }
-        }, 0, SEND_INTERVAL);
+        heartbeat.scheduleAtFixedRate(this::beat, 0, SEND_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
     /**

@@ -19,6 +19,7 @@ public class LocalNodeBuilder {
     private Optional<SocketAddress> listenAddress = Optional.empty();
     private Optional<Node> self = Optional.empty();
     private Optional<ConnectionListenerFactory> connectionListenerFactory = Optional.empty();
+    private Optional<ThreadGroup> threadGroup = Optional.empty();
 
     public LocalNodeBuilder() {}
 
@@ -55,11 +56,21 @@ public class LocalNodeBuilder {
     }
 
     /**
+     * What thread group should be used for internal threads.
+     */
+    public LocalNodeBuilder threadGroup(ThreadGroup threadGroup) {
+        this.threadGroup = Optional.of(threadGroup);
+        return this;
+    }
+
+    /**
      * Build this LocalNode.
      */
     public LocalNode build() {
         Logger logger = this.logger.orElseGet(Log::getDefaultLogger);
-        ConnectionManager connectionManager = ConnectionManager.create(logger);
+        ConnectionManager connectionManager = threadGroup.isPresent() ?
+                ConnectionManager.create(threadGroup.get(), logger) :
+                ConnectionManager.create(logger);
         // self is required
         Node self = this.self.orElseThrow(() -> new IllegalStateException("self must be set"));
         SocketAddress listenAddress = this.listenAddress.orElseGet(() -> {

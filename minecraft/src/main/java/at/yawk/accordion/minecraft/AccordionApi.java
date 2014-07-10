@@ -5,6 +5,7 @@ import at.yawk.accordion.codec.packet.MessengerPacketChannel;
 import at.yawk.accordion.codec.packet.PacketChannel;
 import at.yawk.accordion.distributed.ConnectionListenerFactory;
 import at.yawk.accordion.distributed.LocalNode;
+import at.yawk.accordion.distributed.LocalNodeBuilder;
 import at.yawk.accordion.distributed.Node;
 import com.google.common.base.Preconditions;
 import java.net.InetAddress;
@@ -83,6 +84,11 @@ public class AccordionApi implements PacketChannel {
      * The PacketChannel used to send and receive packets through our LocalNode.
      */
     @Delegate @Getter private PacketChannel channel;
+
+    /**
+     * What thread group should be used for internal threads.
+     */
+    private ThreadGroup threadGroup;
 
     /**
      * Whether Accordion has been started.
@@ -205,6 +211,15 @@ public class AccordionApi implements PacketChannel {
     }
 
     /**
+     * What thread group should be used for internal threads.
+     */
+    public AccordionApi threadGroup(ThreadGroup threadGroup) {
+        checkNotStarted();
+        this.threadGroup = threadGroup;
+        return this;
+    }
+
+    /**
      * Throws an exception if our server is started and basic configuration may not be performed anymore.
      */
     private synchronized void checkNotStarted() {
@@ -231,7 +246,11 @@ public class AccordionApi implements PacketChannel {
         // create identity
         Node self = new Node(new InetSocketAddress(externalAddress, port), tier);
         // build local node
-        localNode = LocalNode.builder()
+        LocalNodeBuilder builder = LocalNode.builder();
+        if (this.threadGroup != null) {
+            builder.threadGroup(threadGroup);
+        }
+        localNode = builder
                 .logger(logger)
                 .self(self)
                 .listenAddress(new InetSocketAddress(listenAddress, port))

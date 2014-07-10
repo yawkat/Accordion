@@ -6,18 +6,18 @@ import at.yawk.accordion.Messenger;
 import at.yawk.accordion.codec.ByteCodec;
 import at.yawk.accordion.netty.Connection;
 import io.netty.buffer.ByteBuf;
-import lombok.AccessLevel;
-import lombok.Getter;
-import org.slf4j.Logger;
-
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.AccessLevel;
+import lombok.Getter;
+import org.slf4j.Logger;
 
 /**
  * Class for managing connections with other nodes, packet distribution and packet reading.
@@ -33,6 +33,14 @@ public class ConnectionManager implements Messenger<ByteBuf> {
      * RNG for generating random packet IDs.
      */
     private static final Random PACKET_ID_GENERATOR = new Random();
+
+    private static final AtomicInteger threadId = new AtomicInteger();
+
+    /**
+     * Thread group used for all executors used by this ConnectionManager.
+     */
+    @Getter(AccessLevel.PACKAGE)
+    private final ThreadGroup threadGroup;
 
     /**
      * Our logger.
@@ -85,30 +93,36 @@ public class ConnectionManager implements Messenger<ByteBuf> {
     /**
      * Executor used for asynchronous connection writing.
      */
-    private final Executor executor = Executors.newCachedThreadPool();
+    private final Executor executor;
 
-    private ConnectionManager(Logger logger) {
+    private ConnectionManager(ThreadGroup threadGroup, Logger logger) {
+        this.threadGroup = threadGroup;
         this.logger = logger;
+
+        executor = Executors
+                .newCachedThreadPool(r -> new Thread(threadGroup,
+                                                     r,
+                                                     "Accordion handler thread #" + threadId.incrementAndGet()));
 
         // remove on disconnect.
         this.disconnectListener = connections::remove;
 
         subscribedChannels = new GraphCollectionSynchronizer<String>(this, InternalProtocol.SUBSCRIBE,
-                new ByteCodec<String>() {
-                    // normal string encode / decode
-                    @Override
-                    public String decode(ByteBuf encoded) {
-                        return InternalProtocol.readByteString(
-                                encoded);
-                    }
+                                                                     new ByteCodec<String>() {
+                                                                         // normal string encode / decode
+                                                                         @Override
+                                                                         public String decode(ByteBuf encoded) {
+                                                                             return InternalProtocol.readByteString(
+                                                                                     encoded);
+                                                                         }
 
-                    @Override
-                    public void encode(ByteBuf target,
-                                       String message) {
-                        InternalProtocol.writeByteString(target,
-                                message);
-                    }
-                }) {
+                                                                         @Override
+                                                                         public void encode(ByteBuf target,
+                                                                                            String message) {
+                                                                             InternalProtocol.writeByteString(target,
+                                                                                                              message);
+                                                                         }
+                                                                     }) {
             @Override
             protected Set<String> handleUpdate(Set<String> newEntries, Connection origin) {
                 Log.debug(getLogger(), () -> origin + " now subscribed to " + newEntries);
@@ -121,14 +135,28 @@ public class ConnectionManager implements Messenger<ByteBuf> {
     }
 
     /**
-     * Add a new internal handler.s
+     * Add a new internal handler.
      */
     void setInternalHandler(String channel, BiConsumer<ByteBuf, Connection> handler) {
         internalHandlers.put(channel, handler);
     }
 
+    public static ConnectionManager create(ThreadGroup threadGroup, Logger logger) {
+        return new ConnectionManager(threadGroup, logger);
+    }
+
     public static ConnectionManager create(Logger logger) {
-        return new ConnectionManager(logger);
+        ThreadGroup group = null;
+        SecurityManager sec = System.getSecurityManager();
+        // check if security wants us to use a specific ThreadGroup
+        if (sec != null) {
+            group = sec.getThreadGroup();
+        }
+        if (group == null) {
+            // default to parent group
+            group = Thread.currentThread().getThreadGroup();
+        }
+        return create(group, logger);
     }
 
     public static ConnectionManager create() {
@@ -170,7 +198,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
             String channelName = InternalProtocol.readByteString(message);
 
             Log.debug(logger,
-                    () -> "Received packet " + Long.toHexString(packetId) + " in channel '" + channelName + "' (" +
+                      () -> "Received packet " + Long.toHexString(packetId) + " in channel '" + channelName + "' (" +
                             message.readableBytes() + " bytes)");
 
             // handle internally
@@ -212,7 +240,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         if (Log.isDebug(logger)) {
             List<Connection> connectionList = receivers.collect(Collectors.toList());
             logger.debug("Transmitting packet " + Long.toHexString(packetId) + " in channel '" + new String(channel) +
-                    "' (" + payload.readableBytes() + " bytes) to " + connectionList);
+                         "' (" + payload.readableBytes() + " bytes) to " + connectionList);
             receivers = connectionList.stream();
         }
         // encode
