@@ -39,13 +39,15 @@ public class DefaultMinecraftConnectionListener implements ConnectionListener {
     protected DefaultMinecraftConnectionListener(LocalNode localNode) {
         this.localNode = localNode;
 
-        scheduler = new ScheduledThreadPoolExecutor(1, task -> new Thread(() -> {
-            try {
-                task.run();
-            } catch (Throwable e) {
-                localNode.getLogger().error("Failed to execute connection listener task", e);
-            }
-        }));
+        scheduler = new ScheduledThreadPoolExecutor(1, task ->
+                new Thread(localNode.getConnectionManager().getThreadGroup(),
+                           () -> {
+                               try {
+                                   task.run();
+                               } catch (Throwable e) {
+                                   localNode.getLogger().error("Failed to execute connection listener task", e);
+                               }
+                           }));
 
         nodeSorter = Comparator
                 // avoid nodes we polled unsuccessfully in the last 10 seconds

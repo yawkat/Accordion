@@ -39,7 +39,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
     /**
      * Thread group used for all executors used by this ConnectionManager.
      */
-    @Getter(AccessLevel.PACKAGE)
+    @Getter
     private final ThreadGroup threadGroup;
 
     /**
