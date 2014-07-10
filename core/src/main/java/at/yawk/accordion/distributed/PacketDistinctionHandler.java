@@ -58,16 +58,18 @@ class PacketDistinctionHandler {
     /**
      * Create a new PacketDistinctionHandler and start its clearing thread with the default interval.
      */
-    public static PacketDistinctionHandler createAndStart() {
-        return createAndStart(DEFAULT_CLEAR_INTERVAL);
+    public static PacketDistinctionHandler createAndStart(ThreadGroup threadGroup) {
+        return createAndStart(threadGroup, DEFAULT_CLEAR_INTERVAL);
     }
 
     /**
      * Create a new PacketDistinctionHandler and start its clearing thread with the given interval.
      */
-    public static PacketDistinctionHandler createAndStart(long clearIntervalMillis) {
+    public static PacketDistinctionHandler createAndStart(ThreadGroup threadGroup, long clearIntervalMillis) {
         PacketDistinctionHandler handler = createNotStarted();
-        handler.startAutoClear(task -> new Thread(task, "Packet distinction thread #" + THREAD_ID.incrementAndGet()),
+        handler.startAutoClear(task -> new Thread(threadGroup,
+                                                  task,
+                                                  "Packet distinction thread #" + THREAD_ID.incrementAndGet()),
                                clearIntervalMillis);
         return handler;
     }

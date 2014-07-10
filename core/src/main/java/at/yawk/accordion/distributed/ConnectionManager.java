@@ -64,7 +64,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
     /**
      * PacketDistinctionHandler to avoid duplicate packet handling.
      */
-    private final PacketDistinctionHandler packetDistinctionHandler = PacketDistinctionHandler.createAndStart();
+    private final PacketDistinctionHandler packetDistinctionHandler;
 
     /**
      * All channels in the network. Also the channels we need to receive to forward them to other nodes.
@@ -99,6 +99,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         this.threadGroup = threadGroup;
         this.logger = logger;
 
+        packetDistinctionHandler = PacketDistinctionHandler.createAndStart(threadGroup);
         executor = Executors
                 .newCachedThreadPool(r -> new Thread(threadGroup,
                                                      r,
