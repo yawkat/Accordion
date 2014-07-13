@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Value;
 
 /**
@@ -35,6 +36,7 @@ public class Node {
     /**
      * The externally available address of this node.
      */
+    @NonNull
     private final InetSocketAddress address;
     /**
      * The tier / group this node belongs to.
