@@ -67,7 +67,7 @@ class NettyConnection implements Connection {
 
     @Override
     public void disconnect() {
-        channel.disconnect();
+        close(channel);
         disconnectHandler.run();
     }
 
@@ -83,5 +83,25 @@ class NettyConnection implements Connection {
     @Override
     public Map<String, Object> properties() {
         return properties;
+    }
+
+    /**
+     * Tries to close a channel through a bunch of different methods, ensuring no file descriptors are leaked.
+     */
+    static void close(Channel channel) {
+        try {
+            // first, disconnect
+            channel.disconnect().addListener(f -> {
+                try {
+                    // close
+                    channel.close().addListener(g -> {
+                        try {
+                            // use unsafe access to make sure underlying socket is closed
+                            channel.unsafe().closeForcibly();
+                        } catch (Exception ignored) {}
+                    });
+                } catch (Exception ignored) {}
+            });
+        } catch (Exception ignored) {}
     }
 }

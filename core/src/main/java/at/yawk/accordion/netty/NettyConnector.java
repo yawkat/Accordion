@@ -73,8 +73,7 @@ public class NettyConnector implements Connector {
             workerGroup.shutdownGracefully();
 
             // kill channels
-            registeredChannels.forEach(Channel::close);
-            registeredChannels.forEach(c -> c.unsafe().closeForcibly());
+            registeredChannels.forEach(NettyConnection::close);
 
             return Optional.empty();
         }
