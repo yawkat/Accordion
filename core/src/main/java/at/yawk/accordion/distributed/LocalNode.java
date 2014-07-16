@@ -75,8 +75,8 @@ public class LocalNode {
         this.connectionListener = connectionListenerFactory.createConnectionListener(this);
 
         remoteNodes = new BasicCollectionSynchronizer<Node>(this.connectionManager,
-                                                       InternalProtocol.SYNC_NODES,
-                                                       Node.getCodec()) {
+                                                            InternalProtocol.SYNC_NODES,
+                                                            Node.getCodec()) {
             @Override
             protected Set<Node> handleUpdate(Set<Node> newEntries, Connection origin) {
                 // call our listener with the newly known nodes.
@@ -93,6 +93,12 @@ public class LocalNode {
         connectionManager.setInternalHandler(InternalProtocol.WELCOME, (message, connection) -> {
             // Read and add node
             Node node = Node.read(message);
+            // already connected to that node
+            if (nodesToConnections.containsKey(node)) {
+                connection.disconnect();
+                return;
+            }
+
             nodesToConnections.put(node, connection);
             connectionsToNodes.put(connection, node);
             Log.info(getLogger(), () -> node + " connected");
