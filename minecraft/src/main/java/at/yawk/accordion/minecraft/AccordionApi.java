@@ -3,6 +3,7 @@ package at.yawk.accordion.minecraft;
 import at.yawk.accordion.Log;
 import at.yawk.accordion.codec.packet.MessengerPacketChannel;
 import at.yawk.accordion.codec.packet.PacketChannel;
+import at.yawk.accordion.compression.Compressor;
 import at.yawk.accordion.distributed.ConnectionListenerFactory;
 import at.yawk.accordion.distributed.LocalNode;
 import at.yawk.accordion.distributed.LocalNodeBuilder;
@@ -89,6 +90,11 @@ public class AccordionApi implements PacketChannel {
      * What thread group should be used for internal threads.
      */
     private ThreadGroup threadGroup;
+
+    /**
+     * What compressor to use for messages. Defaults to no compression.
+     */
+    private Compressor compressor;
 
     /**
      * Whether Accordion has been started.
@@ -249,6 +255,9 @@ public class AccordionApi implements PacketChannel {
         LocalNodeBuilder builder = LocalNode.builder();
         if (this.threadGroup != null) {
             builder.threadGroup(threadGroup);
+        }
+        if (this.compressor != null) {
+            builder.compressor(compressor);
         }
         localNode = builder
                 .logger(logger)

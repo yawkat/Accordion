@@ -4,6 +4,8 @@ import at.yawk.accordion.Channel;
 import at.yawk.accordion.Log;
 import at.yawk.accordion.Messenger;
 import at.yawk.accordion.codec.ByteCodec;
+import at.yawk.accordion.compression.Compressor;
+import at.yawk.accordion.compression.VoidCompressor;
 import at.yawk.accordion.netty.Connection;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
@@ -95,9 +97,16 @@ public class ConnectionManager implements Messenger<ByteBuf> {
      */
     private final Executor executor;
 
-    private ConnectionManager(ThreadGroup threadGroup, Logger logger) {
+    /**
+     * Compressor used to compress data between nodes. Note that there is no check to ensure two nodes use the same
+     * compression. Only external packet bodies are compressed, internal channels aren't.
+     */
+    private final Compressor compressor;
+
+    private ConnectionManager(ThreadGroup threadGroup, Logger logger, Compressor compressor) {
         this.threadGroup = threadGroup;
         this.logger = logger;
+        this.compressor = compressor;
 
         packetDistinctionHandler = PacketDistinctionHandler.createAndStart(threadGroup);
         executor = Executors
@@ -143,10 +152,18 @@ public class ConnectionManager implements Messenger<ByteBuf> {
     }
 
     public static ConnectionManager create(ThreadGroup threadGroup, Logger logger) {
-        return new ConnectionManager(threadGroup, logger);
+        return create(threadGroup, logger, VoidCompressor.getInstance());
+    }
+
+    public static ConnectionManager create(ThreadGroup threadGroup, Logger logger, Compressor compressor) {
+        return new ConnectionManager(threadGroup, logger, compressor);
     }
 
     public static ConnectionManager create(Logger logger) {
+        return create(logger, VoidCompressor.getInstance());
+    }
+
+    public static ConnectionManager create(Logger logger, Compressor compressor) {
         ThreadGroup group = null;
         SecurityManager sec = System.getSecurityManager();
         // check if security wants us to use a specific ThreadGroup
@@ -157,7 +174,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
             // default to parent group
             group = Thread.currentThread().getThreadGroup();
         }
-        return create(group, logger);
+        return create(group, logger, compressor);
     }
 
     public static ConnectionManager create() {
@@ -211,9 +228,11 @@ public class ConnectionManager implements Messenger<ByteBuf> {
             }
 
             // handle payload in listeners
-            listeners.getOrDefault(channelName, Collections.emptySet())
-                    .stream()
-                    .forEach(listener -> listener.accept(message.copy()));
+            Collection<Consumer<ByteBuf>> subs = listeners.getOrDefault(channelName, Collections.emptySet());
+            if (!subs.isEmpty()) {
+                ByteBuf decompressed = compressor.decode(message);
+                subs.forEach(listener -> listener.accept(decompressed.copy()));
+            }
 
             // reset reader index so we can copy the message
             message.resetReaderIndex();
@@ -299,6 +318,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         return new Channel<ByteBuf>() {
             @Override
             public void publish(ByteBuf message) {
+                message = compressor.encode(message);
                 // send
                 sendPacket(nameBytes, getConnectionsSubscribedTo(name), message);
             }

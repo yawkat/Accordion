@@ -1,6 +1,8 @@
 package at.yawk.accordion.distributed;
 
 import at.yawk.accordion.Log;
+import at.yawk.accordion.compression.Compressor;
+import at.yawk.accordion.compression.VoidCompressor;
 import at.yawk.accordion.netty.NettyConnector;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -20,6 +22,8 @@ public class LocalNodeBuilder {
     private Optional<Node> self = Optional.empty();
     private Optional<ConnectionListenerFactory> connectionListenerFactory = Optional.empty();
     private Optional<ThreadGroup> threadGroup = Optional.empty();
+
+    private Compressor compressor = VoidCompressor.getInstance();
 
     public LocalNodeBuilder() {}
 
@@ -64,13 +68,21 @@ public class LocalNodeBuilder {
     }
 
     /**
+     * What compressor to use for messages. Defaults to no compression.
+     */
+    public LocalNodeBuilder compressor(Compressor compressor) {
+        this.compressor = compressor;
+        return this;
+    }
+
+    /**
      * Build this LocalNode.
      */
     public LocalNode build() {
         Logger logger = this.logger.orElseGet(Log::getDefaultLogger);
         ConnectionManager connectionManager = threadGroup.isPresent() ?
-                ConnectionManager.create(threadGroup.get(), logger) :
-                ConnectionManager.create(logger);
+                ConnectionManager.create(threadGroup.get(), logger, compressor) :
+                ConnectionManager.create(logger, compressor);
         // self is required
         Node self = this.self.orElseThrow(() -> new IllegalStateException("self must be set"));
         SocketAddress listenAddress = this.listenAddress.orElseGet(() -> {
