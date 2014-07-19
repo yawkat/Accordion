@@ -226,6 +226,15 @@ public class AccordionApi implements PacketChannel {
     }
 
     /**
+     * What compressor to use for messages. Defaults to no compression.
+     */
+    public AccordionApi compressor(Compressor compressor) {
+        checkNotStarted();
+        this.compressor = compressor;
+        return this;
+    }
+
+    /**
      * Throws an exception if our server is started and basic configuration may not be performed anymore.
      */
     private synchronized void checkNotStarted() {
