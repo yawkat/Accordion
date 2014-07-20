@@ -1,5 +1,6 @@
 package at.yawk.accordion.netty;
 
+import at.yawk.accordion.codec.Codec;
 import io.netty.buffer.ByteBuf;
 import java.util.Map;
 import java.util.function.Consumer;

@@ -1,5 +1,6 @@
 package at.yawk.accordion.distributed;
 
+import at.yawk.accordion.compression.Compressor;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.nio.charset.StandardCharsets;
@@ -69,13 +70,20 @@ class InternalProtocol {
     /**
      * Encode a packet to be read by other nodes.
      */
-    static ByteBuf encodePacket(byte[] typeBytes, long id, ByteBuf payload) {
-        ByteBuf full = Unpooled.buffer();
-        // headers
-        full.writeLong(id);
-        writeByteArray(full, typeBytes);
+    static ByteBuf encodePacket(byte[] typeBytes, long id, ByteBuf payload, Compressor compressor) {
+        ByteBuf body = Unpooled.buffer();
+        // channel
+        writeByteArray(body, typeBytes);
         // payload
-        full.writeBytes(payload);
+        body.writeBytes(payload);
+
+        ByteBuf compressedBody = compressor.encode(body);
+
+        ByteBuf full = Unpooled.buffer();
+        // id header
+        full.writeLong(id);
+        // body
+        full.writeBytes(compressedBody);
         return full;
     }
 }

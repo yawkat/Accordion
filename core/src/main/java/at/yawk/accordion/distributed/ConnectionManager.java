@@ -8,6 +8,10 @@ import at.yawk.accordion.compression.Compressor;
 import at.yawk.accordion.compression.VoidCompressor;
 import at.yawk.accordion.netty.Connection;
 import io.netty.buffer.ByteBuf;
+import lombok.AccessLevel;
+import lombok.Getter;
+import org.slf4j.Logger;
+
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
@@ -17,9 +21,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.AccessLevel;
-import lombok.Getter;
-import org.slf4j.Logger;
 
 /**
  * Class for managing connections with other nodes, packet distribution and packet reading.
@@ -99,7 +100,7 @@ public class ConnectionManager implements Messenger<ByteBuf> {
 
     /**
      * Compressor used to compress data between nodes. Note that there is no check to ensure two nodes use the same
-     * compression. Only external packet bodies are compressed, internal channels aren't.
+     * compression.
      */
     private final Compressor compressor;
 
@@ -111,28 +112,28 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         packetDistinctionHandler = PacketDistinctionHandler.createAndStart(threadGroup);
         executor = Executors
                 .newCachedThreadPool(r -> new Thread(threadGroup,
-                                                     r,
-                                                     "Accordion handler thread #" + threadId.incrementAndGet()));
+                        r,
+                        "Accordion handler thread #" + threadId.incrementAndGet()));
 
         // remove on disconnect.
         this.disconnectListener = connections::remove;
 
         subscribedChannels = new GraphCollectionSynchronizer<String>(this, InternalProtocol.SUBSCRIBE,
-                                                                     new ByteCodec<String>() {
-                                                                         // normal string encode / decode
-                                                                         @Override
-                                                                         public String decode(ByteBuf encoded) {
-                                                                             return InternalProtocol.readByteString(
-                                                                                     encoded);
-                                                                         }
+                new ByteCodec<String>() {
+                    // normal string encode / decode
+                    @Override
+                    public String decode(ByteBuf encoded) {
+                        return InternalProtocol.readByteString(
+                                encoded);
+                    }
 
-                                                                         @Override
-                                                                         public void encode(ByteBuf target,
-                                                                                            String message) {
-                                                                             InternalProtocol.writeByteString(target,
-                                                                                                              message);
-                                                                         }
-                                                                     }) {
+                    @Override
+                    public void encode(ByteBuf target,
+                                       String message) {
+                        InternalProtocol.writeByteString(target,
+                                message);
+                    }
+                }) {
             @Override
             protected Set<String> handleUpdate(Set<String> newEntries, Connection origin) {
                 Log.debug(getLogger(), () -> origin + " now subscribed to " + newEntries);
@@ -199,52 +200,68 @@ public class ConnectionManager implements Messenger<ByteBuf> {
             connection.disconnect();
         });
         // on receive
-        connection.setMessageHandler(message -> {
-            receivedPacketCountIncludingDuplicates.incrementAndGet();
-
-            // read packet ID
-            long packetId = message.readLong();
-            if (!packetDistinctionHandler.register(packetId)) {
-                // already received, do not handle again
-                Log.debug(logger, () -> "Duplicate packet " + packetId);
-                return;
-            }
-
-            receivedPacketCount.incrementAndGet();
-
-            // read channel name
-            String channelName = InternalProtocol.readByteString(message);
-
-            Log.debug(logger,
-                      () -> "Received packet " + Long.toHexString(packetId) + " in channel '" + channelName + "' (" +
-                            message.readableBytes() + " bytes)");
-
-            // handle internally
-            BiConsumer<ByteBuf, Connection> internalHandler = internalHandlers.get(channelName);
-            if (internalHandler != null) {
-                internalHandler.accept(message, connection);
-                // internally handled, do not handle in user code or forward
-                return;
-            }
-
-            // handle payload in listeners
-            Collection<Consumer<ByteBuf>> subs = listeners.getOrDefault(channelName, Collections.emptySet());
-            if (!subs.isEmpty()) {
-                ByteBuf decompressed = compressor.decode(message);
-                subs.forEach(listener -> listener.accept(decompressed.copy()));
-            }
-
-            // reset reader index so we can copy the message
-            message.resetReaderIndex();
-            // forward packet to other connections that listen to this channel
-            getConnectionsSubscribedTo(channelName)
-                    // except the origin of the packet (they already got it)
-                    .filter(other -> other != connection)
-                            // send
-                    .forEach(other -> copyAndSend(other, message));
-        });
+        connection.setMessageHandler(message -> handleRawMessage(connection, message));
         subscribedChannels.onConnected(connection);
         heartbeatManager.onConnected(connection);
+    }
+
+    /**
+     * Handle a raw (encoded) message from the given connection.
+     */
+    private void handleRawMessage(Connection connection, ByteBuf message) {
+        int startIndex = message.readerIndex();
+
+        receivedPacketCountIncludingDuplicates.incrementAndGet();
+
+        // read packet ID
+        long packetId = message.readLong();
+        if (!packetDistinctionHandler.register(packetId)) {
+            // already received, do not handle again
+            Log.debug(logger, () -> "Duplicate packet " + packetId);
+            return;
+        }
+
+        receivedPacketCount.incrementAndGet();
+
+        Stream<Connection> forwards = handleDecodedMessage(connection, compressor.decode(message), packetId);
+
+        // reset reader index so we can copy the message
+        message.readerIndex(startIndex);
+        // forward packet to other connections that listen to this channel
+        forwards
+                // except the origin of the packet (they already got it)
+                .filter(other -> other != connection)
+                        // send
+                .forEach(other -> copyAndSend(other, message));
+    }
+
+    /**
+     * Handle a decoded message from the given connection.
+     *
+     * @return a stream of connections the message should be forwarded to.
+     */
+    private Stream<Connection> handleDecodedMessage(Connection sender, ByteBuf decoded, long id) {
+        // read channel name
+        String channelName = InternalProtocol.readByteString(decoded);
+
+        Log.debug(logger,
+                () -> "Received packet " + Long.toHexString(id) + " in channel '" + channelName + "' (" +
+                        decoded.readableBytes() + " bytes)");
+
+        // handle internally
+        BiConsumer<ByteBuf, Connection> internalHandler = internalHandlers.get(channelName);
+        if (internalHandler != null) {
+            internalHandler.accept(decoded, sender);
+            // internally handled, do not handle in user code or forward
+            return Stream.empty();
+        }
+
+        // handle payload in listeners
+        Collection<Consumer<ByteBuf>> subs = listeners.getOrDefault(channelName, Collections.emptySet());
+        if (!subs.isEmpty()) {
+            subs.forEach(listener -> listener.accept(decoded.copy()));
+        }
+        return getConnectionsSubscribedTo(channelName);
     }
 
     /**
@@ -260,11 +277,11 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         if (Log.isDebug(logger)) {
             List<Connection> connectionList = receivers.collect(Collectors.toList());
             logger.debug("Transmitting packet " + Long.toHexString(packetId) + " in channel '" + new String(channel) +
-                         "' (" + payload.readableBytes() + " bytes) to " + connectionList);
+                    "' (" + payload.readableBytes() + " bytes) to " + connectionList);
             receivers = connectionList.stream();
         }
         // encode
-        ByteBuf full = InternalProtocol.encodePacket(channel, packetId, payload);
+        ByteBuf full = InternalProtocol.encodePacket(channel, packetId, payload, compressor);
 
         // transmit to all given connections
         receivers.forEach(connection -> copyAndSend(connection, full));
@@ -318,7 +335,6 @@ public class ConnectionManager implements Messenger<ByteBuf> {
         return new Channel<ByteBuf>() {
             @Override
             public void publish(ByteBuf message) {
-                message = compressor.encode(message);
                 // send
                 sendPacket(nameBytes, getConnectionsSubscribedTo(name), message);
             }

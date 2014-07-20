@@ -1,6 +1,8 @@
 package at.yawk.accordion.simulation;
 
 import at.yawk.accordion.Log;
+import at.yawk.accordion.compression.SnappyCompressor;
+import at.yawk.accordion.compression.VoidCompressor;
 import at.yawk.accordion.distributed.LocalNode;
 import at.yawk.accordion.distributed.Node;
 import io.netty.buffer.ByteBuf;
@@ -59,7 +61,7 @@ public class Simulation {
             int count = tiers[tier].length;
             for (int i = 0; i < count; i++) {
                 Node node = new Node(new InetSocketAddress(local, port++), tier);
-                LocalNode locNode = LocalNode.builder().self(node).build();
+                LocalNode locNode = LocalNode.builder().compressor(SnappyCompressor.getInstance()).self(node).build();
                 if (tier > 0) {
                     locNode.listen();
                 }
