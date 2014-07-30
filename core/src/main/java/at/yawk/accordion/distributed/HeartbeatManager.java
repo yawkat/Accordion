@@ -48,7 +48,7 @@ class HeartbeatManager {
                                                                   r,
                                                                   "Heartbeat thread #" + threadId.incrementAndGet()));
 
-        connectionManager.setInternalHandler(InternalProtocol.HEARTBEAT, (msg, con) -> markAlive(con));
+        connectionManager.setInternalHandler(InternalProtocol.HEARTBEAT, (msg, con) -> {});
     }
 
     /**
@@ -100,7 +100,7 @@ class HeartbeatManager {
     /**
      * Mark a connection as alive (set the "last heartbeat" attribute to the current time).
      */
-    private void markAlive(Connection connection) {
+    public void markAlive(Connection connection) {
         connection.properties().put("lastHeartbeat", System.currentTimeMillis());
     }
 }

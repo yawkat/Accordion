@@ -221,6 +221,11 @@ public class ConnectionManager implements Messenger<ByteBuf> {
             return;
         }
 
+        // mark heartbeat as alive
+        // not doing this before distinction check should be enough because only duplicate packets over 3s is a problem
+        // anyway
+        heartbeatManager.markAlive(connection);
+
         receivedPacketCount.incrementAndGet();
 
         Stream<Connection> forwards = handleDecodedMessage(connection, compressor.decode(message), packetId);
