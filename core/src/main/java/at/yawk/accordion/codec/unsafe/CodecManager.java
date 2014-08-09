@@ -15,8 +15,19 @@ public class CodecManager implements CodecSupplier {
 
     private final List<CodecSupplier> codecSuppliers = new ArrayList<>();
 
-    {
+    @SuppressWarnings("ConstantConditions")
+    CodecManager() {
+        if (defaultManager == null) { // this is the default mgr
+            addDefaults();
+        } else {
+            codecSuppliers.addAll(defaultManager.codecSuppliers);
+        }
+    }
+
+    private void addDefaults() {
         addSupplier(CommonObjectCodec::factory);
+
+        addSupplier(new OptionalCodec());
 
         addCollectionCodec(LinkedList.class, i -> new LinkedList());
         addCollectionCodec(HashSet.class, HashSet::new);
