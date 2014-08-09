@@ -90,7 +90,7 @@ public class CodecManager implements CodecSupplier {
 
     <C extends Collection<?>> CodecManager addCollectionCodec(Class<C> type, IntFunction<C> factory) {
         return addEscalatingObjectCodec(type,
-                                        Collection.class,
+                                        Iterable.class,
                                         t -> makeCollectionCodec(t, factory));
     }
 
