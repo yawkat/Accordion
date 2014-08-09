@@ -22,6 +22,9 @@ public class CodecManager implements CodecSupplier {
         addCollectionCodec(HashSet.class, HashSet::new);
         addCollectionCodec(ArrayList.class, ArrayList::new);
 
+        //noinspection unchecked
+        addEscalatingObjectCodec(HashMap.class, Map.class, t -> new MapCodec(t, HashMap::new));
+
         addSupplier(ArrayCodec::factory);
 
         addUnsafeCodec(boolean.class, PrimitiveCodec.INT);
