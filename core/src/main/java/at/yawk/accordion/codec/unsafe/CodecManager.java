@@ -11,23 +11,22 @@ import lombok.Getter;
  * @author yawkat
  */
 public class CodecManager implements CodecSupplier {
+    private static final CodecManager defaultSuppliers = new CodecManager();
     @Getter private static final CodecManager defaultManager = new CodecManager();
 
     private final List<CodecSupplier> codecSuppliers = new ArrayList<>();
 
     @SuppressWarnings("ConstantConditions")
     CodecManager() {
-        if (defaultManager == null) { // this is the default mgr
+        if (defaultSuppliers == null) { // this is the default mgr
             addDefaults();
         } else {
-            codecSuppliers.addAll(defaultManager.codecSuppliers);
+            addSupplier(new NamedObjectCodec(this)::factory);
+            codecSuppliers.addAll(0, defaultSuppliers.codecSuppliers);
         }
     }
 
     private void addDefaults() {
-        addSupplier(NamedObjectCodec::factory);
-        addSupplier(CommonObjectCodec::factory);
-
         addSupplier(new OptionalCodec());
 
         addCollectionCodec(LinkedList.class, i -> new LinkedList());
@@ -48,6 +47,8 @@ public class CodecManager implements CodecSupplier {
         addUnsafeCodec(long.class, PrimitiveCodec.LONG);
         addUnsafeCodec(float.class, PrimitiveCodec.FLOAT);
         addUnsafeCodec(double.class, PrimitiveCodec.DOUBLE);
+
+        compactCodec(String.class);
     }
 
     @Override
@@ -57,6 +58,10 @@ public class CodecManager implements CodecSupplier {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst();
+    }
+
+    <T> CodecManager compactCodec(Class<T> of) {
+        return addObjectCodec(of, new NullableCodec<>(CommonObjectCodec.create(this, of)));
     }
 
     CodecManager addSupplier(CodecSupplier supplier) {

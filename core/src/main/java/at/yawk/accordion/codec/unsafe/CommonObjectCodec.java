@@ -7,13 +7,12 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.Stream;
-import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
 /**
  * @author yawkat
  */
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+@RequiredArgsConstructor
 class CommonObjectCodec<T> implements ByteCodec<T> {
     private final Class<T> type;
     private final OffsetField[] fields;
@@ -36,7 +35,7 @@ class CommonObjectCodec<T> implements ByteCodec<T> {
             type.isEnum()) {
             return Optional.empty();
         }
-        return Optional.of(new UnsafeByteCodec(create(registry, type)));
+        return Optional.of(new UnsafeByteCodec(create(registry, field.type())));
     }
 
     public static <T> ByteCodec<T> create(CodecSupplier registry, Class<T> clazz) {

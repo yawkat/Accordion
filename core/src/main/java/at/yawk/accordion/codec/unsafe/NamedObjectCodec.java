@@ -4,17 +4,19 @@ import at.yawk.accordion.codec.ByteCodec;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
 
 /**
  * @author yawkat
  */
-@RequiredArgsConstructor
 class NamedObjectCodec implements ByteCodec<Object> {
-    private final CodecSupplier codecs;
+    private final CodecSupplier directCodecs;
 
-    public static Optional<UnsafeCodec> factory(CodecSupplier registry, FieldWrapper field) {
-        return Optional.of(new UnsafeByteCodec<>(new NamedObjectCodec(registry)));
+    public NamedObjectCodec(CodecSupplier codecs) {
+        directCodecs = new CachedCodecSupplier((m, f) -> CommonObjectCodec.factory(codecs, f));
+    }
+
+    public Optional<UnsafeCodec> factory(CodecSupplier registry, FieldWrapper field) {
+        return Optional.of(new UnsafeByteCodec<>(this));
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -25,11 +27,11 @@ class NamedObjectCodec implements ByteCodec<Object> {
         } else {
             Class<?> clazz = message.getClass();
             writeClassName(target, clazz.getName());
-            ((ByteCodec) codecs.getCodecOrThrow(FieldWrapper.clazz(clazz)).toByteCodec()).encode(target, message);
+            getCodec(clazz).encode(target, message);
         }
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings("unchecked")
     @Override
     public Object decode(ByteBuf encoded) {
         String className = readClassName(encoded);
@@ -38,10 +40,15 @@ class NamedObjectCodec implements ByteCodec<Object> {
         }
         try {
             Class<?> clazz = Class.forName(className);
-            return ((ByteCodec) codecs.getCodecOrThrow(FieldWrapper.clazz(clazz)).toByteCodec()).decode(encoded);
+            return getCodec(clazz).decode(encoded);
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private ByteCodec getCodec(Class<?> clazz) {
+        return (ByteCodec) directCodecs.getCodecOrThrow(FieldWrapper.clazz(clazz)).toByteCodec();
     }
 
     private static String readClassName(ByteBuf buf) {
