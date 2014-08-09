@@ -32,7 +32,8 @@ class CommonObjectCodec<T> implements ByteCodec<T> {
             type.isInterface() ||
             type.isArray() ||
             type.isAnonymousClass() ||
-            type.isLocalClass()) {
+            type.isLocalClass() ||
+            type.isEnum()) {
             return Optional.empty();
         }
         return Optional.of(new UnsafeByteCodec(create(registry, type)));

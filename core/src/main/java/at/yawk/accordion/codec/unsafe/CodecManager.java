@@ -37,6 +37,7 @@ public class CodecManager implements CodecSupplier {
         addEscalatingObjectCodec(HashMap.class, Map.class, t -> new MapCodec(t, HashMap::new));
 
         addSupplier(ArrayCodec::factory);
+        addSupplier(EnumCodec::factory);
 
         addUnsafeCodec(boolean.class, PrimitiveCodec.BOOLEAN);
         addUnsafeCodec(byte.class, PrimitiveCodec.BYTE);
