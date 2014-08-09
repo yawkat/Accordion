@@ -46,12 +46,16 @@ public abstract class AbstractObjectChannel<T> implements ObjectChannel<T> {
                 .forEach((Consumer subscriber) -> subscriber.accept(message));
     }
 
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
     public <P extends T> void subscribe(Class<P> clazz, Consumer<P> listener) {
-        listen(clazz, listener, messenger.getChannel(channelNameFactory.apply(clazz)));
-
         // add to subscribers map
-        subscribers.computeIfAbsent(clazz, cl -> new CopyOnWriteArrayList<>()).add(listener);
+        Collection<Consumer<P>> subs = (Collection) subscribers.computeIfAbsent(clazz,
+                                                                                cl -> new CopyOnWriteArrayList<>());
+        if (subs.isEmpty()) {
+            listen(clazz, p -> subs.forEach(l -> l.accept(p)), messenger.getChannel(channelNameFactory.apply(clazz)));
+        }
+        subs.add(listener);
     }
 
     protected abstract void write(T message, ByteBuf target);

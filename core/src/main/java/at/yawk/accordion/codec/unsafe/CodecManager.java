@@ -1,58 +1,109 @@
 package at.yawk.accordion.codec.unsafe;
 
 import at.yawk.accordion.codec.ByteCodec;
-import java.lang.reflect.Field;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import lombok.AccessLevel;
+import java.util.*;
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.stream.Stream;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 /**
  * @author yawkat
  */
-@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
-public class CodecManager {
-    @Getter private static final CodecManager defaultManager = CodecManagerBuilder.create().build();
+public class CodecManager implements CodecSupplier {
+    @Getter private static final CodecManager defaultManager = new CodecManager();
 
-    private final Map<Class<?>, CodecFactory<?>> codecs;
+    private final List<CodecSupplier> codecSuppliers = new ArrayList<>();
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    UnsafeCodec<?> findCodec(Field field) {
-        UnsafeCodec<?> result = findCodec(field.getType(), field);
-        if (result == null) {
-            throw new NoSuchElementException("No codec for " + field.getType().getName());
-        }
-        return result;
+    {
+        addSupplier(CommonObjectCodec::factory);
+
+        addCollectionCodec(LinkedList.class, i -> new LinkedList());
+        addCollectionCodec(HashSet.class, HashSet::new);
+        addCollectionCodec(ArrayList.class, ArrayList::new);
+
+        addSupplier(ArrayCodec::factory);
+
+        addUnsafeCodec(boolean.class, PrimitiveCodec.INT);
+        addUnsafeCodec(byte.class, PrimitiveCodec.BYTE);
+        addUnsafeCodec(short.class, PrimitiveCodec.SHORT);
+        addUnsafeCodec(char.class, PrimitiveCodec.CHAR);
+        addUnsafeCodec(int.class, PrimitiveCodec.INT);
+        addUnsafeCodec(long.class, PrimitiveCodec.LONG);
+        addUnsafeCodec(float.class, PrimitiveCodec.FLOAT);
+        addUnsafeCodec(double.class, PrimitiveCodec.DOUBLE);
+    }
+
+    @Override
+    public Optional<UnsafeCodec> getCodec(CodecSupplier registry, FieldWrapper field) {
+        return codecSuppliers.stream()
+                .map(child -> child.getCodec(registry, field))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
+    }
+
+    CodecManager addSupplier(CodecSupplier supplier) {
+        codecSuppliers.add(0, supplier);
+        return this;
+    }
+
+    <T> CodecManager addUnsafeCodec(Class<T> clazz, UnsafeCodec codec) {
+        return addSupplier((m, f) -> {
+            if (f.type() == clazz) {
+                return Optional.of(codec);
+            } else {
+                return Optional.empty();
+            }
+        });
+    }
+
+    <T> CodecManager addObjectCodec(Class<T> clazz, ByteCodec<T> codec) {
+        return addUnsafeCodec(clazz, new UnsafeByteCodec<T>(codec));
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    UnsafeCodec<?> findCodec(Class<?> clazz) {
-        UnsafeCodec<?> result = findCodec(clazz, null);
-        if (result == null) {
-            throw new NoSuchElementException("No codec for " + clazz.getName());
-        }
-        return result;
+    <L extends P, P> CodecManager addEscalatingObjectCodec(Class<L> lowest,
+                                                           Class<P> highest,
+                                                           Function<Class<? super L>,
+                                                                   CodecSupplier> codecSupplierFactory) {
+        superTypes(lowest)
+                .filter(highest::isAssignableFrom)
+                .map(t -> codecSupplierFactory.apply((Class<? super L>) t))
+                .forEach(this::addSupplier);
+        return this;
+    }
+
+    <C extends Collection<?>> CodecManager addCollectionCodec(Class<C> type, IntFunction<C> factory) {
+        return addEscalatingObjectCodec(type,
+                                        Collection.class,
+                                        t -> makeCollectionCodec(t, factory));
+    }
+
+    CodecManager copy() {
+        CodecManager manager = new CodecManager();
+        manager.codecSuppliers.addAll(this.codecSuppliers);
+        return manager;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <C> CodecSupplier makeCollectionCodec(Class<C> type, IntFunction<? extends C> factory) {
+        return new CollectionCodecSupplier(type, factory);
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    private UnsafeCodec<?> findCodec(Class<?> clazz, Field field) {
-        if (clazz.isArray()) {
-            return new ArrayCodec((Class) clazz, findCodec(clazz.getComponentType()));
-        }
-
-        if (!codecs.containsKey(clazz)) {
-            return null;
-        }
-        return codecs.get(clazz).create(this, field);
+    private static <T> Stream<Class<? super T>> superTypes(Class<T> of) {
+        return (Stream) superTypes0(of).distinct();
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    <T> ByteCodec<T> findFirstLevelCodec(Class<T> of) {
-        UnsafeCodec<?> codec = findCodec(of, null);
-        if (codec == null) {
-            return new ReflectiveByteCodec<>(of, this);
+    private static Stream<Class<?>> superTypes0(Class<?> of) {
+        if (of == null) {
+            return Stream.empty();
         }
-        return (ByteCodec) codec;
+        return Stream.concat(Stream.of(of),
+                             Stream.concat(
+                                     superTypes0(of.getSuperclass()),
+                                     Arrays.stream(of.getInterfaces()).flatMap(CodecManager::superTypes0)
+                             ));
     }
 }

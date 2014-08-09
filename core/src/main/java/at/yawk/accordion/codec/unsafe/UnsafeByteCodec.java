@@ -8,29 +8,27 @@ import lombok.RequiredArgsConstructor;
  * @author yawkat
  */
 @RequiredArgsConstructor
-class UnsafeByteCodec<T> extends UnsafeCodec<T> {
-    private final ByteCodec<T> codec;
+class UnsafeByteCodec<T> implements UnsafeCodec {
+    private final ByteCodec<T> delegate;
 
     @Override
     public void read(ByteBuf from, Object to, long offset) {
-        T val = codec.decode(from);
-        UnsafeAccess.unsafe.putObject(to, offset, val);
+        T value = delegate.decode(from);
+        UnsafeAccess.unsafe.putObject(to, offset, value);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void write(ByteBuf to, Object from, long offset) {
-        T val = (T) UnsafeAccess.unsafe.getObject(from, offset);
-        codec.encode(to, val);
+        T value = (T) UnsafeAccess.unsafe.getObject(from, offset);
+        if (value == null) {
+            throw new NullPointerException("Cannot write null value at " + from.getClass() + " +" + offset);
+        }
+        delegate.encode(to, value);
     }
 
     @Override
-    public void encode(ByteBuf target, T message) {
-        codec.encode(target, message);
-    }
-
-    @Override
-    public T decode(ByteBuf encoded) {
-        return codec.decode(encoded);
+    public ByteCodec<?> toByteCodec() {
+        return delegate;
     }
 }

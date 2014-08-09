@@ -13,10 +13,10 @@ class UnsafeAccess {
     static {
         Unsafe theUnsafe;
         try {
-            theUnsafe = UnsafeAccess.loadUnsafeFromField();
+            theUnsafe = loadUnsafeFromField();
         } catch (ReflectiveOperationException e) {
             try {
-                theUnsafe = UnsafeAccess.createNewUnsafe();
+                theUnsafe = createNewUnsafe();
             } catch (ReflectiveOperationException f) {
                 throw new Error(f);
             }
