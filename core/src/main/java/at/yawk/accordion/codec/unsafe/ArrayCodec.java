@@ -44,7 +44,7 @@ class ArrayCodec implements ByteCodec<Object> {
     @Override
     public Object decode(ByteBuf encoded) {
         int length = encoded.readInt();
-        Object array = Array.newInstance(componentType);
+        Object array = Array.newInstance(componentType, length);
         long offset = baseOffset;
         for (int i = 0; i < length; i++) {
             componentCodec.read(encoded, array, offset);
