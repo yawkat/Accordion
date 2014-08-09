@@ -25,6 +25,7 @@ public class CodecManager implements CodecSupplier {
     }
 
     private void addDefaults() {
+        addSupplier(NamedObjectCodec::factory);
         addSupplier(CommonObjectCodec::factory);
 
         addSupplier(new OptionalCodec());

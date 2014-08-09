@@ -24,7 +24,11 @@ public class UnsafeObjectChannelTest {
         HashMap<String, Integer> map = new HashMap<>();
         map.put("a", 1);
         map.put("b", 2);
-        TestTransmB message = new TestTransmB("1", "2", Arrays.asList(0, 1, 2, Integer.MAX_VALUE), map);
+        TestTransmB message = new TestTransmB("1",
+                                              "2",
+                                              Arrays.asList(0, 1, 2, Integer.MAX_VALUE),
+                                              map,
+                                              new TestImplementation());
 
         channel.subscribe(TestTransmB.class, s -> assertEquals(message, s));
 
@@ -44,12 +48,18 @@ public class UnsafeObjectChannelTest {
         private final String b;
         private final List<Integer> c;
         private final Map<String, Integer> d;
+        private final TestInterface e;
 
-        private TestTransmB(String a, String b, List<Integer> c, Map<String, Integer> d) {
+        private TestTransmB(String a, String b, List<Integer> c, Map<String, Integer> d, TestInterface e) {
             super(a);
             this.b = b;
             this.c = c;
             this.d = d;
+            this.e = e;
         }
     }
+
+    private static interface TestInterface {}
+
+    private static class TestImplementation implements TestInterface {}
 }
