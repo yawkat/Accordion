@@ -50,18 +50,18 @@ public class UnsafeObjectChannel extends AbstractObjectChannel<Object> {
         return new UnsafeObjectChannel(messenger, channelNameFactory, codecs);
     }
 
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
     protected void write(Object message, ByteBuf target) {
-        codecs.getCodec(FieldWrapper.clazz(message.getClass()));
+        ((ByteCodec) codecs.getCodecOrThrow(FieldWrapper.clazz(message.getClass())).toByteCodec())
+                .encode(target, message);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     protected <P> void listen(Class<P> type, Consumer<P> handler, Channel<ByteBuf> baseChannel) {
         FieldWrapper wrapper = FieldWrapper.clazz(type);
-        ByteCodec<P> codec = (ByteCodec<P>) codecs.getCodec(wrapper)
-                .orElseThrow(() -> new UnsupportedOperationException("Unable to encode " + wrapper.name()))
-                .toByteCodec();
+        ByteCodec<P> codec = (ByteCodec<P>) codecs.getCodecOrThrow(wrapper).toByteCodec();
         baseChannel.subscribe(buf -> {
             P message = codec.decode(buf);
             handler.accept(message);

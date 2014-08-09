@@ -18,17 +18,11 @@ class MapCodec<M extends Map<?, ?>> extends GenericCodecSupplier<M> {
 
     @Override
     protected ByteCodec<M> createCodec(CodecSupplier registry, FieldWrapper field) {
-        FieldWrapper keyType = field.genericType(0)
-                .orElseThrow(() -> new UnsupportedOperationException(
-                        "Could not resolve generic type of " + field.name()));
-        ByteCodec keyCodec = registry.getCodec(keyType)
-                .orElseThrow(() -> new UnsupportedOperationException("Cannot serialize " + keyType.name()))
+        FieldWrapper keyType = field.genericTypeOrThrow(0);
+        ByteCodec keyCodec = registry.getCodecOrThrow(keyType)
                 .toByteCodec();
-        FieldWrapper valueType = field.genericType(0)
-                .orElseThrow(() -> new UnsupportedOperationException(
-                        "Could not resolve generic type of " + field.name()));
-        ByteCodec valueCodec = registry.getCodec(valueType)
-                .orElseThrow(() -> new UnsupportedOperationException("Cannot serialize " + valueType.name()))
+        FieldWrapper valueType = field.genericTypeOrThrow(1);
+        ByteCodec valueCodec = registry.getCodecOrThrow(valueType)
                 .toByteCodec();
 
         return new ByteCodec<M>() {

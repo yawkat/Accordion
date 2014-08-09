@@ -27,7 +27,7 @@ public class CodecManager implements CodecSupplier {
 
         addSupplier(ArrayCodec::factory);
 
-        addUnsafeCodec(boolean.class, PrimitiveCodec.INT);
+        addUnsafeCodec(boolean.class, PrimitiveCodec.BOOLEAN);
         addUnsafeCodec(byte.class, PrimitiveCodec.BYTE);
         addUnsafeCodec(short.class, PrimitiveCodec.SHORT);
         addUnsafeCodec(char.class, PrimitiveCodec.CHAR);

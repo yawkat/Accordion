@@ -43,9 +43,8 @@ class CommonObjectCodec<T> implements ByteCodec<T> {
                 .map(field -> {
                     FieldWrapper wrapper = FieldWrapper.field(field);
                     long offset = UnsafeAccess.unsafe.objectFieldOffset(field);
-                    Optional<UnsafeCodec> codec = registry.getCodec(wrapper);
-                    codec.orElseThrow(() -> new UnsupportedOperationException("Cannot serialize " + wrapper.name()));
-                    return new OffsetField(offset, codec.get());
+                    UnsafeCodec codec = registry.getCodecOrThrow(wrapper);
+                    return new OffsetField(offset, codec);
                 })
                 .toArray(OffsetField[]::new);
         return new CommonObjectCodec<>(clazz, fields);
@@ -62,7 +61,8 @@ class CommonObjectCodec<T> implements ByteCodec<T> {
     @Override
     public void encode(ByteBuf target, T message) {
         if (message.getClass() != type) {
-            throw new UnsupportedOperationException("GenericObjectCodec cannot serialize subclasses!");
+            throw new UnsupportedOperationException(
+                    "GenericObjectCodec cannot serialize subclass " + message.getClass() + " of " + type);
         }
 
         for (OffsetField field : this.fields) {

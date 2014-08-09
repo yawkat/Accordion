@@ -13,6 +13,11 @@ interface FieldWrapper {
 
     Optional<FieldWrapper> genericType(int index);
 
+    default FieldWrapper genericTypeOrThrow(int index) {
+        return genericType(index)
+                .orElseThrow(() -> new UnsupportedOperationException("Could not resolve generic type of " + name()));
+    }
+
     String name();
 
     public static FieldWrapper field(Field field) {

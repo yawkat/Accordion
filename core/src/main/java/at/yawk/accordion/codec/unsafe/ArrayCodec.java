@@ -21,9 +21,7 @@ class ArrayCodec implements ByteCodec<Object> {
         if (arrayType.isArray()) {
             Class<?> componentType = arrayType.getComponentType();
             FieldWrapper componentWrapper = FieldWrapper.clazz(componentType);
-            UnsafeCodec componentCodec = registry.getCodec(componentWrapper)
-                    .orElseThrow(() -> new UnsupportedOperationException(
-                            "Cannot serialize component type " + componentWrapper.name()));
+            UnsafeCodec componentCodec = registry.getCodecOrThrow(componentWrapper);
             long baseOffset = UnsafeAccess.unsafe.arrayBaseOffset(arrayType);
             long indexScale = UnsafeAccess.unsafe.arrayIndexScale(arrayType);
             ArrayCodec codec = new ArrayCodec(componentType, componentCodec, baseOffset, indexScale);

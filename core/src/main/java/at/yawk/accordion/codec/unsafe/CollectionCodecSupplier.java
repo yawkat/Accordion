@@ -19,12 +19,8 @@ class CollectionCodecSupplier<C extends Collection<?>> extends GenericCodecSuppl
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     protected ByteCodec<C> createCodec(CodecSupplier registry, FieldWrapper field) {
-        FieldWrapper componentType = field.genericType(0)
-                .orElseThrow(() -> new UnsupportedOperationException(
-                        "Could not resolve generic type of " + field.name()));
-        ByteCodec componentCodec = registry.getCodec(componentType)
-                .orElseThrow(() -> new UnsupportedOperationException("Cannot serialize " + componentType.name()))
-                .toByteCodec();
+        FieldWrapper componentType = field.genericTypeOrThrow(0);
+        ByteCodec componentCodec = registry.getCodecOrThrow(componentType).toByteCodec();
 
         return new ByteCodec<C>() {
             @Override

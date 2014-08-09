@@ -1,7 +1,5 @@
 package at.yawk.accordion.codec.unsafe;
 
-import at.yawk.accordion.codec.ByteCodec;
-import java.lang.reflect.Field;
 import java.util.Optional;
 
 /**
@@ -13,5 +11,10 @@ interface CodecSupplier {
 
     default Optional<UnsafeCodec> getCodec(FieldWrapper field) {
         return getCodec(this, field);
+    }
+
+    default UnsafeCodec getCodecOrThrow(FieldWrapper field) {
+        return getCodec(field)
+                .orElseThrow(() -> new UnsupportedOperationException("Missing codec for " + field.name()));
     }
 }
