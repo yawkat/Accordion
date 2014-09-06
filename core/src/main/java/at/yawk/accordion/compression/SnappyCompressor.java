@@ -2,8 +2,11 @@ package at.yawk.accordion.compression;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.handler.codec.compression.Snappy;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Arrays;
 import lombok.Getter;
+import org.xerial.snappy.Snappy;
 
 /**
  * Compressor implementation that uses snappy to compress data.
@@ -17,21 +20,25 @@ public class SnappyCompressor implements Compressor {
 
     @Override
     public ByteBuf encode(ByteBuf raw) {
-        // fairly cheap
-        Snappy snappy = new Snappy();
-
-        ByteBuf output = Unpooled.buffer();
-        snappy.encode(raw, output, raw.readableBytes());
-        return output;
+        try {
+            return Unpooled.wrappedBuffer(Snappy.compress(toArray(raw)));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Override
     public ByteBuf decode(ByteBuf compressed) {
-        // fairly cheap
-        Snappy snappy = new Snappy();
+        try {
+            return Unpooled.wrappedBuffer(Snappy.uncompress(toArray(compressed)));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 
-        ByteBuf output = Unpooled.buffer();
-        snappy.decode(compressed, output);
-        return output;
+    private static byte[] toArray(ByteBuf raw) {
+        return Arrays.copyOfRange(raw.array(),
+                                  raw.arrayOffset() + raw.readerIndex(),
+                                  raw.arrayOffset() + raw.readerIndex() + raw.readableBytes());
     }
 }
