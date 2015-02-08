@@ -76,7 +76,18 @@ This project is used in the MCStrike internal network.
 License
 -------
 
-This library is released under [LGPL 3](https://www.gnu.org/licenses/lgpl.html).
+This library is released under [MPL 2.0](https://www.mozilla.org/MPL/2.0/).
+
+### License Summary
+
+**Please note that the following summary is not a substitute for the actual license text but only written for faster
+understanding of the license.**
+
+- You are allowed to use this library in open- and closed-source projects.
+- Any modified binaries of this library must be distributed together with the sources of the modified files of this
+  library (like GPL).
+- This license is not infective, meaning that code that is dynamically linked (references) this library does not have to
+  be open-source (unlike GPL, like LGPL/MIT).
 
 Libraries
 ---------
